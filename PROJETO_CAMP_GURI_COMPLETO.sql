@@ -6,7 +6,6 @@
 
 DROP DATABASE IF EXISTS camp_dos_guri;
 CREATE DATABASE camp_dos_guri;
-\c camp_dos_guri
 
 -- ═══════════════════════════════════════════════════════════════
 -- PART 1: CREATE TABLES
@@ -188,16 +187,25 @@ FROM usuarios u
 FULL OUTER JOIN modalidades m ON 1=1
 FULL OUTER JOIN campeonatos c ON u.id_usuario = c.id_criador AND m.id_modalidade = c.id_modalidade;
 
+GO
 CREATE VIEW campeonatos_ativos AS
-SELECT id_campeonato, nome, status, max_participantes
+SELECT
+    id_campeonato,
+    nome,
+    status,
+    max_participantes
 FROM campeonatos
 WHERE status = 'em_progresso';
+GO
 
 CREATE VIEW participantes_inscritos AS
 SELECT p.nickname, c.nome AS campeonato, i.seed
 FROM participantes p
-INNER JOIN inscricoes i ON p.id_participante = i.id_participante
-INNER JOIN campeonatos c ON i.id_campeonato = c.id_campeonato;
+INNER JOIN inscricoes i
+    ON p.id_participante = i.id_participante
+INNER JOIN campeonatos c
+    ON i.id_campeonato = c.id_campeonato;
+GO
 
 -- ═══════════════════════════════════════════════════════════════
 -- PART 5: EXEMPLOS SQL - SLIDE 4 (CONSTRAINTS)
