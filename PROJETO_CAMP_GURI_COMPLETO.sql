@@ -12,22 +12,22 @@ CREATE DATABASE camp_dos_guri;
 -- ═══════════════════════════════════════════════════════════════
 
 CREATE TABLE usuarios (
-    id_usuario SERIAL PRIMARY KEY,
+    id_usuario INT IDENTITY(1,1) PRIMARY KEY,
     nome VARCHAR(150) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
     tipo_usuario VARCHAR(50) NOT NULL,
-    ativo BOOLEAN DEFAULT TRUE
+    ativo BIT DEFAULT 1
 );
 
 CREATE TABLE modalidades (
-    id_modalidade SERIAL PRIMARY KEY,
+    id_modalidade INT IDENTITY(1,1) PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
     tipo_disputa VARCHAR(50) NOT NULL,
     descricao TEXT
 );
 
 CREATE TABLE campeonatos (
-    id_campeonato SERIAL PRIMARY KEY,
+    id_campeonato INT IDENTITY(1,1) PRIMARY KEY,
     nome VARCHAR(200) NOT NULL,
     id_criador INTEGER NOT NULL REFERENCES usuarios(id_usuario),
     id_modalidade INTEGER NOT NULL REFERENCES modalidades(id_modalidade),
@@ -37,14 +37,14 @@ CREATE TABLE campeonatos (
 );
 
 CREATE TABLE participantes (
-    id_participante SERIAL PRIMARY KEY,
+    id_participante INT IDENTITY(1,1) PRIMARY KEY,
     nome VARCHAR(150) NOT NULL,
     nickname VARCHAR(100) NOT NULL UNIQUE,
     email VARCHAR(150) NOT NULL UNIQUE
 );
 
 CREATE TABLE inscricoes (
-    id_inscricao SERIAL PRIMARY KEY,
+    id_inscricao INT IDENTITY(1,1) PRIMARY KEY,
     id_campeonato INTEGER NOT NULL REFERENCES campeonatos(id_campeonato),
     id_participante INTEGER NOT NULL REFERENCES participantes(id_participante),
     seed INTEGER NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE inscricoes (
 );
 
 CREATE TABLE fases (
-    id_fase SERIAL PRIMARY KEY,
+    id_fase INT IDENTITY(1,1) PRIMARY KEY,
     id_campeonato INTEGER NOT NULL REFERENCES campeonatos(id_campeonato),
     numero_fase INTEGER NOT NULL,
     nome VARCHAR(100) NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE fases (
 );
 
 CREATE TABLE rodadas (
-    id_rodada SERIAL PRIMARY KEY,
+    id_rodada INT IDENTITY(1,1) PRIMARY KEY,
     id_fase INTEGER NOT NULL REFERENCES fases(id_fase),
     numero_rodada INTEGER NOT NULL,
     nome VARCHAR(100) NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE rodadas (
 );
 
 CREATE TABLE partidas (
-    id_partida SERIAL PRIMARY KEY,
+    id_partida INT IDENTITY(1,1) PRIMARY KEY,
     id_rodada INTEGER NOT NULL REFERENCES rodadas(id_rodada),
     id_inscricao_1 INTEGER NOT NULL REFERENCES inscricoes(id_inscricao),
     id_inscricao_2 INTEGER NOT NULL REFERENCES inscricoes(id_inscricao),
@@ -79,7 +79,7 @@ CREATE TABLE partidas (
 );
 
 CREATE TABLE resultados_partida (
-    id_resultado SERIAL PRIMARY KEY,
+    id_resultado INT IDENTITY(1,1) PRIMARY KEY,
     id_partida INTEGER NOT NULL REFERENCES partidas(id_partida),
     placar_lado_1 INTEGER NOT NULL,
     placar_lado_2 INTEGER NOT NULL,
@@ -92,9 +92,9 @@ CREATE TABLE resultados_partida (
 -- ═══════════════════════════════════════════════════════════════
 
 INSERT INTO usuarios (nome, email, tipo_usuario, ativo) VALUES
-('João Silva', 'joao.silva@example.com', 'criador', TRUE),
-('Maria Santos', 'maria.santos@example.com', 'criador', TRUE),
-('Pedro Admin', 'pedro.admin@example.com', 'admin', TRUE);
+('João Silva', 'joao.silva@example.com', 'criador', 1),
+('Maria Santos', 'maria.santos@example.com', 'criador', 1),
+('Pedro Admin', 'pedro.admin@example.com', 'admin', 1);
 
 INSERT INTO modalidades (nome, tipo_disputa, descricao) VALUES
 ('Pokémon VGC', 'competitivo', 'Competição oficial VGC'),
@@ -312,5 +312,4 @@ BEGIN
         RAISERROR ('Placares inválidos', 16, 1);
     END
 END;
-GO
-
+GO-- Write your own SQL object definition here, and it'll be included in your package.
