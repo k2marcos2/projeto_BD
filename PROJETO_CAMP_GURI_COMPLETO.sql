@@ -214,7 +214,7 @@ GO
 ALTER TABLE campeonatos 
 ADD CONSTRAINT check_max_participantes CHECK (max_participantes > 0);
 
-CREATE DOMAIN status_camp AS VARCHAR(50) CHECK (VALUE IN ('em_progresso', 'inscricoes', 'finalizado'));
+
 
 -- ═══════════════════════════════════════════════════════════════
 -- PART 6: EXEMPLOS SQL - SLIDE 4 (INDEX)
@@ -228,57 +228,89 @@ CREATE INDEX idx_partidas_rodada_status ON partidas(id_rodada, status);
 -- PART 7: EXEMPLOS SQL - SLIDE 5 (FUNCTIONS)
 -- ═══════════════════════════════════════════════════════════════
 
-CREATE FUNCTION contar_usuarios() 
-RETURNS INTEGER AS $$
-    SELECT COUNT(*) FROM usuarios;
-$$ LANGUAGE SQL;
+GO
+CREATE FUNCTION contar_usuarios()
+RETURNS INT
+AS
+BEGIN
+    DECLARE @total INT;
+
+    SELECT @total = COUNT(*)
+    FROM usuarios;
+
+    RETURN @total;
+END;
+GO
 
 CREATE FUNCTION total_campeonatos_ativos()
-RETURNS INTEGER AS $$
-DECLARE
-    total INTEGER;
+RETURNS INT
+AS
 BEGIN
-    SELECT COUNT(*) INTO total FROM campeonatos WHERE status = 'em_progresso';
-    RETURN total;
-END;
-$$ LANGUAGE plpgsql;
+    DECLARE @total INT;
 
-CREATE FUNCTION listar_participantes_campeonato(p_id_campeonato INTEGER)
-RETURNS TABLE(nickname VARCHAR, seed INTEGER, status VARCHAR) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT p.nickname, i.seed, i.status
-    FROM participantes p
-    INNER JOIN inscricoes i ON p.id_participante = i.id_participante
-    WHERE i.id_campeonato = p_id_campeonato;
+    SELECT @total = COUNT(*)
+    FROM campeonatos
+    WHERE status = 'em_progresso';
+
+    RETURN @total;
 END;
-$$ LANGUAGE plpgsql;
+GO
+
+CREATE FUNCTION listar_participantes_campeonato
+(
+    @id_campeonato INT
+)
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT
+        p.nickname,
+        i.seed,
+        i.status
+    FROM participantes p
+    INNER JOIN inscricoes i
+        ON p.id_participante = i.id_participante
+    WHERE i.id_campeonato = @id_campeonato
+);
+GO
 
 -- ═══════════════════════════════════════════════════════════════
 -- PART 8: EXEMPLOS SQL - SLIDE 5 (PROCEDURES)
 -- ═══════════════════════════════════════════════════════════════
 
-CREATE PROCEDURE finalizar_campeonato(p_id_campeonato INTEGER) AS $$
+CREATE PROCEDURE finalizar_campeonato
+    @id_campeonato INT
+AS
 BEGIN
-    UPDATE campeonatos 
-    SET status = 'finalizado' 
-    WHERE id_campeonato = p_id_campeonato;
+    UPDATE campeonatos
+    SET status = 'finalizado'
+    WHERE id_campeonato = @id_campeonato;
 END;
-$$ LANGUAGE plpgsql;
+GO
 
-CREATE PROCEDURE registrar_resultado(
-    p_id_partida INTEGER,
-    p_placar_1 INTEGER,
-    p_placar_2 INTEGER,
-    p_vencedor INTEGER
-) AS $$
+CREATE PROCEDURE registrar_resultado
+    @id_partida INT,
+    @placar_1 INT,
+    @placar_2 INT,
+    @vencedor INT
+AS
 BEGIN
-    IF p_placar_1 > 0 AND p_placar_2 > 0 THEN
-        INSERT INTO resultados_partida (id_partida, placar_lado_1, placar_lado_2, vencedor_inscricao)
-        VALUES (p_id_partida, p_placar_1, p_placar_2, p_vencedor);
-        UPDATE partidas SET status = 'finalizada' WHERE id_partida = p_id_partida;
+    IF @placar_1 > 0 AND @placar_2 > 0
+    BEGIN
+        INSERT INTO resultados_partida
+            (id_partida, placar_lado_1, placar_lado_2, vencedor_inscricao)
+        VALUES
+            (@id_partida, @placar_1, @placar_2, @vencedor);
+
+        UPDATE partidas
+        SET status = 'finalizada'
+        WHERE id_partida = @id_partida;
+    END
     ELSE
-        RAISE EXCEPTION 'Placares inválidos';
-    END IF;
+    BEGIN
+        RAISERROR ('Placares inválidos', 16, 1);
+    END
 END;
-$$ LANGUAGE plpgsql;
+GO
+
