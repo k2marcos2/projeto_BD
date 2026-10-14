@@ -3,10 +3,10 @@ import pyodbc
 
 conn = pyodbc.connect(
     'DRIVER={SQL Server};'
-    'SERVER=nome_do_servidor;'
-    'DATABASE=nome_do_banco;'
-    'UID=usuario;'
-    'PWD=senha'
+    'SERVER=CAMPGURI;'
+    'DATABASE=CAMPGURI;'
+    'UID=localhost;'
+    'PWD=12345678'
 )
 
 cursor = conn.cursor()
