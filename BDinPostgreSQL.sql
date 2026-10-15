@@ -1,32 +1,24 @@
+DROP TABLE IF EXISTS log_alteracoes, resultados_partida, partidas, rodadas,
+                     fases, inscricoes, participantes, campeonatos,
+                     modalidades, usuarios CASCADE;
 
--- ╔═════════════════════════════════════════════════════════════╗
--- ║  Os Camp dos Guri - PROJETO COMPLETO DE BANCO DE DADOS     ║
--- ║  Sistema de Gerenciamento de Campeonatos Pokémon Cobblemon ║
--- ║  PostgreSQL - Arquivo completo com tudo                    ║
--- ╚═════════════════════════════════════════════════════════════╝
+DROP DOMAIN IF EXISTS dominio_status;
 
-SELECT current_database(), current_user, version();
-
-DROP DATABASE IF EXISTS camp_dos_guri;
-CREATE DATABASE camp_dos_guri;
-\c camp_dos_guri
-
--- ═══════════════════════════════════════════════════════════════
--- PART 1: CREATE TABLES
--- ═══════════════════════════════════════════════════════════════
+CREATE DOMAIN dominio_status AS VARCHAR(50)
+    CHECK (VALUE IN ('inscricoes', 'em_progresso', 'finalizado'));
 
 CREATE TABLE usuarios (
     id_usuario SERIAL PRIMARY KEY,
     nome VARCHAR(150) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
-    tipo_usuario VARCHAR(50) NOT NULL,
+    tipo_usuario VARCHAR(50)  NOT NULL,
     ativo BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE modalidades (
     id_modalidade SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
-    tipo_disputa VARCHAR(50) NOT NULL,
+    tipo_disputa VARCHAR(50)  NOT NULL,
     descricao TEXT
 );
 
@@ -35,7 +27,7 @@ CREATE TABLE campeonatos (
     nome VARCHAR(200) NOT NULL,
     id_criador INTEGER NOT NULL REFERENCES usuarios(id_usuario),
     id_modalidade INTEGER NOT NULL REFERENCES modalidades(id_modalidade),
-    status VARCHAR(50) NOT NULL,
+    status dominio_status NOT NULL,
     max_participantes INTEGER NOT NULL,
     data_criacao DATE DEFAULT CURRENT_DATE
 );
@@ -53,7 +45,8 @@ CREATE TABLE inscricoes (
     id_participante INTEGER NOT NULL REFERENCES participantes(id_participante),
     seed INTEGER NOT NULL,
     status VARCHAR(50) NOT NULL,
-    data_inscricao DATE DEFAULT CURRENT_DATE
+    data_inscricao DATE DEFAULT CURRENT_DATE,
+    UNIQUE (id_campeonato, id_participante)   -- ninguém se inscreve 2x no mesmo campeonato
 );
 
 CREATE TABLE fases (
@@ -61,7 +54,7 @@ CREATE TABLE fases (
     id_campeonato INTEGER NOT NULL REFERENCES campeonatos(id_campeonato),
     numero_fase INTEGER NOT NULL,
     nome VARCHAR(100) NOT NULL,
-    tipo VARCHAR(50) NOT NULL,
+    tipo VARCHAR(50)  NOT NULL,
     ordem INTEGER NOT NULL
 );
 
@@ -84,196 +77,367 @@ CREATE TABLE partidas (
 
 CREATE TABLE resultados_partida (
     id_resultado SERIAL PRIMARY KEY,
-    id_partida INTEGER NOT NULL REFERENCES partidas(id_partida),
+    id_partida INTEGER NOT NULL UNIQUE REFERENCES partidas(id_partida),
     placar_lado_1 INTEGER NOT NULL,
     placar_lado_2 INTEGER NOT NULL,
     vencedor_inscricao INTEGER NOT NULL REFERENCES inscricoes(id_inscricao),
     observacoes TEXT
 );
 
--- ═══════════════════════════════════════════════════════════════
--- PART 2: INSERT DATA
--- ═══════════════════════════════════════════════════════════════
+CREATE TABLE log_alteracoes (
+    id_log SERIAL PRIMARY KEY,
+    tabela VARCHAR(50),
+    acao VARCHAR(20),
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ALTER TABLE, CHECK, INDEX
+
+ALTER TABLE campeonatos
+    ADD CONSTRAINT ck_max_participantes CHECK (max_participantes > 0);
+
+ALTER TABLE partidas
+    ADD CONSTRAINT ck_lados_diferentes CHECK (id_inscricao_1 <> id_inscricao_2);
+
+-- INDEX: deixa as buscas por campeonato e por rodada mais rápidas
+CREATE INDEX idx_inscricoes_campeonato ON inscricoes(id_campeonato);
+CREATE INDEX idx_partidas_rodada       ON partidas(id_rodada);
+
+-- INSERT
 
 INSERT INTO usuarios (nome, email, tipo_usuario, ativo) VALUES
-('João Silva', 'joao.silva@example.com', 'criador', TRUE),
-('Maria Santos', 'maria.santos@example.com', 'criador', TRUE),
-('Pedro Admin', 'pedro.admin@example.com', 'admin', TRUE);
+    ('João Silva',   'joao.silva@example.com',   'criador', TRUE),
+    ('Maria Santos', 'maria.santos@example.com', 'criador', TRUE),
+    ('Pedro Admin',  'pedro.admin@example.com',  'admin',   TRUE);
 
 INSERT INTO modalidades (nome, tipo_disputa, descricao) VALUES
-('Pokémon VGC', 'competitivo', 'Competição oficial VGC'),
-('Pokémon Casual', 'casual', 'Entre amigos, sem ranking'),
-('Torneio Rápido', 'competitivo', 'Eliminação direta');
+    ('Pokémon VGC',     'competitivo', 'Competição oficial VGC'),
+    ('Pokémon Casual',  'casual',      'Entre amigos, sem ranking'),
+    ('Torneio Rápido',  'competitivo', 'Eliminação direta');
 
 INSERT INTO campeonatos (nome, id_criador, id_modalidade, status, max_participantes, data_criacao) VALUES
-('Campeonato VGC 2024', 1, 1, 'em_progresso', 64, '2026-10-01'),
-('Torneio Casual', 2, 2, 'inscricoes', 32, '2026-10-05'),
-('Mini Torneio', 1, 3, 'finalizado', 16, '2026-09-20');
+    ('Campeonato VGC 2024', 1, 1, 'em_progresso', 64, '2026-10-01'),
+    ('Torneio Casual',      2, 2, 'inscricoes',   32, '2026-10-05'),
+    ('Mini Torneio',        1, 3, 'finalizado',   16, '2026-09-20');
 
 INSERT INTO participantes (nome, nickname, email) VALUES
-('Lucas Teixeira', 'LucasTrainer', 'lucas@example.com'),
-('Ana Master', 'AnaMaster', 'ana@example.com'),
-('Carlos Expert', 'CarlosExp', 'carlos@example.com'),
-('Beatriz Pro', 'BeatrizPro', 'beatriz@example.com'),
-('Diego Champ', 'DiegoChamp', 'diego@example.com');
+    ('Lucas Teixeira', 'LucasTrainer', 'lucas@example.com'),
+    ('Ana Master',     'AnaMaster',    'ana@example.com'),
+    ('Carlos Expert',  'CarlosExp',    'carlos@example.com'),
+    ('Beatriz Pro',    'BeatrizPro',   'beatriz@example.com'),
+    ('Diego Champ',    'DiegoChamp',   'diego@example.com'),
+    ('Eduardo Novato', 'Novato',       'novato@example.com');   
 
 INSERT INTO inscricoes (id_campeonato, id_participante, seed, status, data_inscricao) VALUES
-(1, 1, 1, 'confirmada', '2026-10-01'),
-(1, 2, 2, 'confirmada', '2026-10-02'),
-(1, 3, 3, 'confirmada', '2026-10-02'),
-(2, 4, 1, 'pendente', '2026-10-05'),
-(2, 5, 2, 'pendente', '2026-10-05'),
-(3, 1, 1, 'confirmada', '2026-09-20');
+    (1, 1, 1, 'confirmada', '2026-10-01'),   
+    (1, 2, 2, 'confirmada', '2026-10-02'),   
+    (1, 3, 3, 'confirmada', '2026-10-02'),   
+    (1, 4, 4, 'confirmada', '2026-10-03'),   
+    (2, 4, 1, 'pendente',   '2026-10-05'),   
+    (2, 5, 2, 'pendente',   '2026-10-05'),   
+    (3, 1, 1, 'confirmada', '2026-09-20');   
 
 INSERT INTO fases (id_campeonato, numero_fase, nome, tipo, ordem) VALUES
-(1, 1, 'Grupos', 'grupos', 1),
-(1, 2, 'Quartofinal', 'mata', 2),
-(1, 3, 'Semifinal', 'mata', 3);
+    (1, 1, 'Grupos',      'grupos', 1),
+    (1, 2, 'Quartofinal', 'mata',   2),
+    (1, 3, 'Semifinal',   'mata',   3),
+    (1, 4, 'Final',       'mata',   4);
 
 INSERT INTO rodadas (id_fase, numero_rodada, nome, ordem) VALUES
-(1, 1, 'Rodada 1', 1),
-(1, 2, 'Rodada 2', 2),
-(2, 1, 'Quartofinal R1', 1),
-(3, 1, 'Semifinal R1', 1);
+    (1, 1, 'Rodada 1',       1),
+    (1, 2, 'Rodada 2',       2),
+    (2, 1, 'Quartofinal R1', 1),
+    (3, 1, 'Semifinal R1',   1),
+    (4, 1, 'Final R1',       1);
 
 INSERT INTO partidas (id_rodada, id_inscricao_1, id_inscricao_2, numero_partida, status) VALUES
-(1, 1, 2, 1, 'finalizada'),
-(1, 3, 4, 2, 'andamento'),
-(3, 1, 2, 1, 'pendente');
+    (1, 1, 2, 1, 'finalizada'),   
+    (1, 3, 4, 2, 'finalizada'),   
+    (2, 1, 3, 1, 'pendente');     
 
 INSERT INTO resultados_partida (id_partida, placar_lado_1, placar_lado_2, vencedor_inscricao, observacoes) VALUES
-(1, 2, 1, 1, 'Ótima partida'),
-(2, 1, 1, 2, 'Ainda em progresso');
+    (1, 2, 1, 1, NULL),                    
+    (2, 1, 2, 4, 'Virada na última rodada');  
 
--- ═══════════════════════════════════════════════════════════════
--- PART 3: EXEMPLOS SQL - SLIDE 3
--- ═══════════════════════════════════════════════════════════════
+-- SELECT, WHERE, LIKE, BETWEEN, ORDER BY, NULL)
 
 SELECT * FROM usuarios;
 SELECT nome, email FROM usuarios;
+
 SELECT * FROM usuarios WHERE tipo_usuario = 'criador';
-SELECT * FROM campeonatos WHERE status = 'em_progresso' AND max_participantes > 30;
-SELECT * FROM participantes WHERE nickname LIKE 'Lucas%';
-SELECT * FROM usuarios WHERE email LIKE '%@%.com%';
-SELECT * FROM campeonatos ORDER BY nome ASC;
-SELECT * FROM participantes ORDER BY nome DESC;
-SELECT * FROM campeonatos WHERE max_participantes BETWEEN 30 AND 70;
-SELECT COUNT(*) FROM usuarios;
-SELECT COUNT(*) FROM campeonatos WHERE status = 'em_progresso';
-SELECT SUM(max_participantes) FROM campeonatos;
-SELECT AVG(max_participantes) FROM campeonatos;
-SELECT MAX(max_participantes) FROM campeonatos;
-SELECT MIN(max_participantes) FROM campeonatos;
-SELECT status, COUNT(*) FROM campeonatos GROUP BY status;
-SELECT status, COUNT(*) FROM campeonatos GROUP BY status HAVING COUNT(*) > 1;
-SELECT * FROM campeonatos WHERE data_criacao IS NULL;
+SELECT nome, max_participantes FROM campeonatos
+WHERE status = 'em_progresso' AND max_participantes > 30;
 
--- ═══════════════════════════════════════════════════════════════
--- PART 4: EXEMPLOS SQL - SLIDE 4 (JOINS)
--- ═══════════════════════════════════════════════════════════════
+SELECT nickname FROM participantes WHERE nickname LIKE 'Lucas%';
+SELECT nome FROM participantes WHERE nome LIKE '_na%';
 
-SELECT c.nome AS campeonato, u.nome AS criador 
-FROM campeonatos c 
+SELECT nome, max_participantes FROM campeonatos
+WHERE max_participantes BETWEEN 30 AND 70;
+
+SELECT nome FROM campeonatos ORDER BY nome ASC;
+SELECT nome FROM participantes ORDER BY nome DESC;
+
+SELECT id_resultado, observacoes FROM resultados_partida
+WHERE observacoes IS NULL;
+
+SELECT DISTINCT status FROM campeonatos;
+
+-- COUNT, SUM, AVG, MIN, MAX
+
+SELECT COUNT(*) AS total_usuarios        FROM usuarios;
+SELECT SUM(max_participantes) AS total_vagas FROM campeonatos;
+SELECT AVG(max_participantes) AS media_vagas FROM campeonatos;
+SELECT MIN(max_participantes) AS menor_torneio,
+       MAX(max_participantes) AS maior_torneio
+FROM campeonatos;
+
+SELECT status, COUNT(*) AS total
+FROM campeonatos
+GROUP BY status;
+
+SELECT id_campeonato, COUNT(*) AS inscritos
+FROM inscricoes
+GROUP BY id_campeonato
+HAVING COUNT(*) >= 3;
+
+-- INNER, LEFT, RIGHT, FULL, NATURAL
+
+SELECT c.nome AS campeonato, u.nome AS criador
+FROM campeonatos c
 INNER JOIN usuarios u ON c.id_criador = u.id_usuario;
 
-SELECT c.nome AS campeonato, r.placar_lado_1, r.placar_lado_2
+SELECT c.nome AS campeonato, COUNT(i.id_inscricao) AS inscritos
 FROM campeonatos c
-LEFT JOIN partidas p ON c.id_campeonato = p.id_rodada
-LEFT JOIN resultados_partida r ON p.id_partida = r.id_partida;
+LEFT JOIN inscricoes i ON c.id_campeonato = i.id_campeonato
+GROUP BY c.id_campeonato, c.nome
+ORDER BY c.nome;
 
-SELECT p.nickname, i.seed, c.nome
-FROM campeonatos c
-RIGHT JOIN inscricoes i ON c.id_campeonato = i.id_campeonato
+SELECT p.nome, p.nickname, i.seed
+FROM inscricoes i
 RIGHT JOIN participantes p ON i.id_participante = p.id_participante;
 
-SELECT u.nome, m.nome, c.nome
-FROM usuarios u
-FULL OUTER JOIN modalidades m ON 1=1
-FULL OUTER JOIN campeonatos c ON u.id_usuario = c.id_criador AND m.id_modalidade = c.id_modalidade;
+SELECT c.nome AS campeonato, f.nome AS fase
+FROM campeonatos c
+FULL OUTER JOIN fases f ON c.id_campeonato = f.id_campeonato;
+
+SELECT * FROM inscricoes NATURAL JOIN participantes;
+
+SELECT p.id_partida,
+       c.nome AS campeonato,
+       f.nome AS fase,
+       r.nome AS rodada
+FROM partidas p
+JOIN rodadas r     ON p.id_rodada = r.id_rodada
+JOIN fases f       ON r.id_fase = f.id_fase
+JOIN campeonatos c ON f.id_campeonato = c.id_campeonato;
+
+-- UNION, INTERSECT, EXCEPT, IN, SOME, ALL, EXISTS, NOT EXISTS
+
+SELECT nome FROM usuarios
+UNION
+SELECT nome FROM participantes;
+
+SELECT id_participante FROM inscricoes WHERE id_campeonato = 1
+INTERSECT
+SELECT id_participante FROM inscricoes WHERE id_campeonato = 2;
+
+SELECT id_participante FROM inscricoes WHERE id_campeonato = 1
+EXCEPT
+SELECT id_participante FROM inscricoes WHERE id_campeonato = 2;
+
+SELECT nome FROM participantes
+WHERE id_participante IN (SELECT id_participante FROM inscricoes
+                          WHERE status = 'pendente');
+
+SELECT nome FROM participantes
+WHERE id_participante = SOME (SELECT id_participante FROM inscricoes
+                              WHERE id_campeonato = 2);
+
+SELECT nome, max_participantes FROM campeonatos
+WHERE max_participantes > ALL (SELECT max_participantes FROM campeonatos
+                               WHERE status = 'finalizado');
+
+SELECT u.nome FROM usuarios u
+WHERE EXISTS (SELECT 1 FROM campeonatos c WHERE c.id_criador = u.id_usuario);
+
+SELECT u.nome FROM usuarios u
+WHERE NOT EXISTS (SELECT 1 FROM campeonatos c WHERE c.id_criador = u.id_usuario);
+
+
+-- VIEWS (tabelas virtuais salvas)
+
 
 CREATE VIEW campeonatos_ativos AS
-SELECT id_campeonato, nome, status, max_participantes
+SELECT id_campeonato, nome, max_participantes
 FROM campeonatos
 WHERE status = 'em_progresso';
 
-CREATE VIEW participantes_inscritos AS
-SELECT p.nickname, c.nome AS campeonato, i.seed
-FROM participantes p
-INNER JOIN inscricoes i ON p.id_participante = i.id_participante
-INNER JOIN campeonatos c ON i.id_campeonato = c.id_campeonato;
+CREATE VIEW partidas_detalhadas AS
+SELECT p.id_partida, c.nome AS campeonato, f.nome AS fase, r.nome AS rodada
+FROM partidas p
+JOIN rodadas r     ON p.id_rodada = r.id_rodada
+JOIN fases f       ON r.id_fase = f.id_fase
+JOIN campeonatos c ON f.id_campeonato = c.id_campeonato;
 
--- ═══════════════════════════════════════════════════════════════
--- PART 5: EXEMPLOS SQL - SLIDE 4 (CONSTRAINTS)
--- ═══════════════════════════════════════════════════════════════
+SELECT * FROM campeonatos_ativos;
+SELECT * FROM partidas_detalhadas;
 
-ALTER TABLE campeonatos 
-ADD CONSTRAINT check_max_participantes CHECK (max_participantes > 0);
 
-CREATE DOMAIN status_camp AS VARCHAR(50) CHECK (VALUE IN ('em_progresso', 'inscricoes', 'finalizado'));
 
--- ═══════════════════════════════════════════════════════════════
--- PART 6: EXEMPLOS SQL - SLIDE 4 (INDEX)
--- ═══════════════════════════════════════════════════════════════
+-- CREATE FUNCTION
 
-CREATE INDEX idx_usuarios_email ON usuarios(email);
-CREATE INDEX idx_inscricoes_campeonato ON inscricoes(id_campeonato);
-CREATE INDEX idx_partidas_rodada_status ON partidas(id_rodada, status);
 
--- ═══════════════════════════════════════════════════════════════
--- PART 7: EXEMPLOS SQL - SLIDE 5 (FUNCTIONS)
--- ═══════════════════════════════════════════════════════════════
-
-CREATE FUNCTION contar_usuarios() 
+CREATE OR REPLACE FUNCTION total_inscritos(p_campeonato INTEGER)
 RETURNS INTEGER AS $$
-    SELECT COUNT(*) FROM usuarios;
+    SELECT COUNT(*)::INTEGER FROM inscricoes WHERE id_campeonato = p_campeonato;
 $$ LANGUAGE SQL;
 
-CREATE FUNCTION total_campeonatos_ativos()
-RETURNS INTEGER AS $$
+CREATE OR REPLACE FUNCTION categoria_campeonato(p_vagas INTEGER)
+RETURNS TEXT AS $$
 DECLARE
-    total INTEGER;
+    categoria TEXT;
 BEGIN
-    SELECT COUNT(*) INTO total FROM campeonatos WHERE status = 'em_progresso';
-    RETURN total;
+    IF p_vagas >= 50 THEN
+        categoria := 'Grande';
+    ELSIF p_vagas >= 20 THEN
+        categoria := 'Médio';
+    ELSE
+        categoria := 'Pequeno';
+    END IF;
+    RETURN categoria;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION listar_participantes_campeonato(p_id_campeonato INTEGER)
-RETURNS TABLE(nickname VARCHAR, seed INTEGER, status VARCHAR) AS $$
+CREATE OR REPLACE FUNCTION listar_inscritos(p_campeonato INTEGER)
+RETURNS TABLE (apelido VARCHAR, posicao_seed INTEGER, situacao VARCHAR) AS $$
 BEGIN
     RETURN QUERY
     SELECT p.nickname, i.seed, i.status
-    FROM participantes p
-    INNER JOIN inscricoes i ON p.id_participante = i.id_participante
-    WHERE i.id_campeonato = p_id_campeonato;
+    FROM inscricoes i
+    JOIN participantes p ON p.id_participante = i.id_participante
+    WHERE i.id_campeonato = p_campeonato
+    ORDER BY i.seed;
 END;
 $$ LANGUAGE plpgsql;
 
--- ═══════════════════════════════════════════════════════════════
--- PART 8: EXEMPLOS SQL - SLIDE 5 (PROCEDURES)
--- ═══════════════════════════════════════════════════════════════
+SELECT nome, total_inscritos(id_campeonato) AS inscritos FROM campeonatos;
+SELECT nome, categoria_campeonato(max_participantes) AS categoria FROM campeonatos;
+SELECT * FROM listar_inscritos(1);
 
-CREATE PROCEDURE finalizar_campeonato(p_id_campeonato INTEGER) AS $$
+
+
+-- CREATE PROCEDURE + CALL
+
+CREATE OR REPLACE PROCEDURE finalizar_campeonato(p_campeonato INTEGER)
+LANGUAGE plpgsql AS $$
 BEGIN
-    UPDATE campeonatos 
-    SET status = 'finalizado' 
-    WHERE id_campeonato = p_id_campeonato;
+    UPDATE campeonatos
+    SET status = 'finalizado'
+    WHERE id_campeonato = p_campeonato;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
-CREATE PROCEDURE registrar_resultado(
-    p_id_partida INTEGER,
+CREATE OR REPLACE PROCEDURE registrar_resultado(
+    p_partida  INTEGER,
     p_placar_1 INTEGER,
     p_placar_2 INTEGER,
     p_vencedor INTEGER
-) AS $$
+)
+LANGUAGE plpgsql AS $$
 BEGIN
-    IF p_placar_1 > 0 AND p_placar_2 > 0 THEN
-        INSERT INTO resultados_partida (id_partida, placar_lado_1, placar_lado_2, vencedor_inscricao)
-        VALUES (p_id_partida, p_placar_1, p_placar_2, p_vencedor);
-        UPDATE partidas SET status = 'finalizada' WHERE id_partida = p_id_partida;
-    ELSE
-        RAISE EXCEPTION 'Placares inválidos';
+    IF p_placar_1 < 0 OR p_placar_2 < 0 THEN
+        RAISE EXCEPTION 'Placar não pode ser negativo';
     END IF;
+
+    INSERT INTO resultados_partida
+        (id_partida, placar_lado_1, placar_lado_2, vencedor_inscricao)
+    VALUES
+        (p_partida, p_placar_1, p_placar_2, p_vencedor);
+
+    UPDATE partidas SET status = 'finalizada' WHERE id_partida = p_partida;
+END;
+$$;
+
+
+
+-- 13. TRIGGERS ações automáticas
+
+CREATE OR REPLACE FUNCTION registra_log() RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO log_alteracoes (tabela, acao) VALUES (TG_TABLE_NAME, TG_OP);
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_log_campeonatos
+AFTER INSERT OR UPDATE OR DELETE ON campeonatos
+FOR EACH ROW EXECUTE FUNCTION registra_log();
+
+CREATE OR REPLACE FUNCTION verifica_vagas() RETURNS TRIGGER AS $$
+DECLARE
+    total_atual INTEGER;
+    vagas       INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO total_atual
+    FROM inscricoes WHERE id_campeonato = NEW.id_campeonato;
+
+    SELECT max_participantes INTO vagas
+    FROM campeonatos WHERE id_campeonato = NEW.id_campeonato;
+
+    IF total_atual >= vagas THEN
+        RAISE EXCEPTION 'Campeonato % sem vagas', NEW.id_campeonato;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_limite_vagas
+BEFORE INSERT ON inscricoes
+FOR EACH ROW EXECUTE FUNCTION verifica_vagas();
+
+
+
+-- PERMISSÕES (CREATE ROLE, GRANT, REVOKE)
+
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'organizador') THEN
+        CREATE ROLE organizador NOLOGIN;
+    END IF;
+END
+$$;
+
+GRANT SELECT ON campeonatos, participantes TO organizador;
+GRANT SELECT, INSERT, DELETE ON inscricoes TO organizador;
+
+-- REVOKE: tira a permissão de apagar inscrições
+REVOKE DELETE ON inscricoes FROM organizador;
+
+
+
+-- DEMONSTRAÇÕES DE INSERT, UPDATE, DELETE, ALTER TABLE e DROP TABLE
+
+
+-- INSERT, UPDATE e DELETE
+INSERT INTO participantes (nome, nickname, email)
+VALUES ('Teste Aluno', 'TesteAluno', 'teste@example.com');
+
+UPDATE participantes
+SET nome = 'Teste Aluno Editado'
+WHERE nickname = 'TesteAluno';
+
+DELETE FROM participantes WHERE nickname = 'TesteAluno';
+
+CREATE TABLE teste_temporario (
+    id   SERIAL PRIMARY KEY,
+    nota INTEGER
+);
+
+ALTER TABLE teste_temporario ADD COLUMN comentario VARCHAR(100);
+
+DROP TABLE teste_temporario;
+
+CALL finalizar_campeonato(3);
+
+SELECT * FROM log_alteracoes;
