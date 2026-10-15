@@ -204,21 +204,38 @@ class CampGiriDB:
         except Exception as e:
             print(f"❌ Erro ao atualizar campeonato: {e}")
     
+    
     def inscrever_participante(self, id_campeonato, id_participante, seed):
-        """Inscreve participante em campeonato"""
+        """Inscreve um participante no campeonato"""
+
         try:
             comando = """
                 INSERT INTO inscricoes
-                (id_campeonato, id_participante, seed, status)
+                    (id_campeonato, id_participante, seed, status)
                 VALUES (?, ?, ?, 'pendente')
                 ON CONFLICT (id_campeonato, id_participante)
                 DO NOTHING
             """
-            self.cursor.execute(comando)
+
+            self.cursor.execute(
+                comando,
+                id_campeonato,
+                id_participante,
+                seed
+            )
+
+            quantidade = self.cursor.rowcount
             self.conexao.commit()
-            print(f"✅ Participante {id_participante} inscrito no campeonato {id_campeonato}")
-        except Exception as e:
-            print(f"❌ Erro ao inscrever participante: {e}")
+
+            if quantidade > 0:
+                print("✅ Participante inscrito com sucesso!")
+            else:
+                print("⚠️ Participante já está inscrito!")
+
+        except pyodbc.Error as erro:
+            self.conexao.rollback()
+            print(f"❌ Erro ao inscrever participante: {erro}")
+
     
     # ═══════════════════════════════════════════════════════════════
     # DELETE - Deletar dados

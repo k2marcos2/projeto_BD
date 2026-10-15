@@ -1,11 +1,15 @@
+
 -- ╔═════════════════════════════════════════════════════════════╗
--- ║  Os Camp dos Guri - PROJETO COMPLETO (CORRIGIDO)           ║
+-- ║  Os Camp dos Guri - PROJETO COMPLETO DE BANCO DE DADOS     ║
 -- ║  Sistema de Gerenciamento de Campeonatos Pokémon Cobblemon ║
--- ║  PostgreSQL - COM TODOS OS 16 COMANDOS PEDIDOS             ║
+-- ║  PostgreSQL - Arquivo completo com tudo                    ║
 -- ╚═════════════════════════════════════════════════════════════╝
+
+SELECT current_database(), current_user, version();
 
 DROP DATABASE IF EXISTS camp_dos_guri;
 CREATE DATABASE camp_dos_guri;
+\c camp_dos_guri
 
 -- ═══════════════════════════════════════════════════════════════
 -- PART 1: CREATE TABLES
@@ -142,111 +146,51 @@ INSERT INTO resultados_partida (id_partida, placar_lado_1, placar_lado_2, venced
 (2, 1, 1, 2, 'Ainda em progresso');
 
 -- ═══════════════════════════════════════════════════════════════
--- PARTE 3: COMANDOS PEDIDOS PELO PROFESSOR (16 TOTAIS)
+-- PART 3: EXEMPLOS SQL - SLIDE 3
 -- ═══════════════════════════════════════════════════════════════
 
--- ✅ COMANDO 1-5: SELECT COM FILTROS (LIKE, WHERE, ORDER BY)
--- EXEMPLO 1: SELECT simples com WHERE
+SELECT * FROM usuarios;
+SELECT nome, email FROM usuarios;
 SELECT * FROM usuarios WHERE tipo_usuario = 'criador';
-
--- EXEMPLO 2: LIKE com % (padrão inicial)
+SELECT * FROM campeonatos WHERE status = 'em_progresso' AND max_participantes > 30;
 SELECT * FROM participantes WHERE nickname LIKE 'Lucas%';
-
--- EXEMPLO 3: ORDER BY ASC (crescente)
+SELECT * FROM usuarios WHERE email LIKE '%@%.com%';
 SELECT * FROM campeonatos ORDER BY nome ASC;
-
--- EXEMPLO 4: ORDER BY DESC (decrescente)
 SELECT * FROM participantes ORDER BY nome DESC;
-
--- EXEMPLO 5: BETWEEN (intervalo)
 SELECT * FROM campeonatos WHERE max_participantes BETWEEN 30 AND 70;
+SELECT COUNT(*) FROM usuarios;
+SELECT COUNT(*) FROM campeonatos WHERE status = 'em_progresso';
+SELECT SUM(max_participantes) FROM campeonatos;
+SELECT AVG(max_participantes) FROM campeonatos;
+SELECT MAX(max_participantes) FROM campeonatos;
+SELECT MIN(max_participantes) FROM campeonatos;
+SELECT status, COUNT(*) FROM campeonatos GROUP BY status;
+SELECT status, COUNT(*) FROM campeonatos GROUP BY status HAVING COUNT(*) > 1;
+SELECT * FROM campeonatos WHERE data_criacao IS NULL;
 
--- ✅ COMANDO 6: COUNT (contagem)
-SELECT COUNT(*) as total_usuarios FROM usuarios;
+-- ═══════════════════════════════════════════════════════════════
+-- PART 4: EXEMPLOS SQL - SLIDE 4 (JOINS)
+-- ═══════════════════════════════════════════════════════════════
 
--- ✅ COMANDO 7: SUM (soma)
-SELECT SUM(max_participantes) as total_vagas FROM campeonatos;
-
--- ✅ COMANDO 8: AVG (média)
-SELECT AVG(max_participantes) as media_participantes FROM campeonatos;
-
--- ✅ COMANDO 9: GROUP BY (agrupamento)
-SELECT status, COUNT(*) as total FROM campeonatos GROUP BY status;
-
--- ✅ COMANDO 10: INNER JOIN
 SELECT c.nome AS campeonato, u.nome AS criador 
 FROM campeonatos c 
 INNER JOIN usuarios u ON c.id_criador = u.id_usuario;
 
--- ✅ COMANDO 11: LEFT OUTER JOIN
-SELECT c.nome, COUNT(i.id_inscricao) as participantes
+SELECT c.nome AS campeonato, r.placar_lado_1, r.placar_lado_2
 FROM campeonatos c
-LEFT JOIN inscricoes i ON c.id_campeonato = i.id_campeonato
-GROUP BY c.id_campeonato, c.nome;
+LEFT JOIN partidas p ON c.id_campeonato = p.id_rodada
+LEFT JOIN resultados_partida r ON p.id_partida = r.id_partida;
 
--- ✅ COMANDO 12: RIGHT OUTER JOIN
-SELECT p.nickname, c.nome as campeonato
+SELECT p.nickname, i.seed, c.nome
 FROM campeonatos c
 RIGHT JOIN inscricoes i ON c.id_campeonato = i.id_campeonato
 RIGHT JOIN participantes p ON i.id_participante = p.id_participante;
 
--- ✅ COMANDO 13: FULL OUTER JOIN
-SELECT u.nome, c.nome
+SELECT u.nome, m.nome, c.nome
 FROM usuarios u
-FULL OUTER JOIN campeonatos c ON u.id_usuario = c.id_criador;
+FULL OUTER JOIN modalidades m ON 1=1
+FULL OUTER JOIN campeonatos c ON u.id_usuario = c.id_criador AND m.id_modalidade = c.id_modalidade;
 
--- ✅ COMANDO 14: NATURAL JOIN (com tabelas compatíveis)
-CREATE TABLE usuarios_temp AS SELECT id_usuario, nome FROM usuarios;
-SELECT * FROM usuarios NATURAL JOIN usuarios_temp;
-DROP TABLE usuarios_temp;
-
--- ✅ COMANDO 15: INTERSECTION (valores em ambas as consultas)
-SELECT id_participante FROM inscricoes WHERE id_campeonato = 1
-INTERSECT
-SELECT id_participante FROM participantes WHERE email LIKE '%@example%';
-
--- ✅ COMANDO 16: DISTINCT (valores únicos)
-SELECT DISTINCT status FROM campeonatos;
-SELECT DISTINCT tipo_usuario FROM usuarios;
-
--- ═══════════════════════════════════════════════════════════════
--- PARTE 4: COMANDOS ADICIONAIS (PROFESSOR PEDIU)
--- ═══════════════════════════════════════════════════════════════
-
--- ✅ SUBQUERY (consulta aninhada)
-SELECT nome FROM usuarios 
-WHERE id_usuario IN (SELECT id_criador FROM campeonatos);
-
-SELECT nickname FROM participantes
-WHERE id_participante NOT IN (SELECT id_participante FROM inscricoes);
-
--- ✅ CHECK (validação de dados)
-ALTER TABLE campeonatos 
-ADD CONSTRAINT check_max_participantes CHECK (max_participantes > 0);
-
--- ✅ TRIGGER (ação automática)
-CREATE TABLE log_alteracoes (
-    id_log SERIAL PRIMARY KEY,
-    tabela VARCHAR(50),
-    acao VARCHAR(20),
-    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE FUNCTION log_atualizacao()
-RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO log_alteracoes (tabela, acao)
-    VALUES (TG_TABLE_NAME, TG_OP);
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_log_usuarios
-AFTER INSERT OR UPDATE ON usuarios
-FOR EACH ROW
-EXECUTE FUNCTION log_atualizacao();
-
--- ✅ VIEWS (tabelas virtuais)
 CREATE VIEW campeonatos_ativos AS
 SELECT id_campeonato, nome, status, max_participantes
 FROM campeonatos
@@ -258,7 +202,27 @@ FROM participantes p
 INNER JOIN inscricoes i ON p.id_participante = i.id_participante
 INNER JOIN campeonatos c ON i.id_campeonato = c.id_campeonato;
 
--- ✅ FUNCTIONS (funções do banco)
+-- ═══════════════════════════════════════════════════════════════
+-- PART 5: EXEMPLOS SQL - SLIDE 4 (CONSTRAINTS)
+-- ═══════════════════════════════════════════════════════════════
+
+ALTER TABLE campeonatos 
+ADD CONSTRAINT check_max_participantes CHECK (max_participantes > 0);
+
+CREATE DOMAIN status_camp AS VARCHAR(50) CHECK (VALUE IN ('em_progresso', 'inscricoes', 'finalizado'));
+
+-- ═══════════════════════════════════════════════════════════════
+-- PART 6: EXEMPLOS SQL - SLIDE 4 (INDEX)
+-- ═══════════════════════════════════════════════════════════════
+
+CREATE INDEX idx_usuarios_email ON usuarios(email);
+CREATE INDEX idx_inscricoes_campeonato ON inscricoes(id_campeonato);
+CREATE INDEX idx_partidas_rodada_status ON partidas(id_rodada, status);
+
+-- ═══════════════════════════════════════════════════════════════
+-- PART 7: EXEMPLOS SQL - SLIDE 5 (FUNCTIONS)
+-- ═══════════════════════════════════════════════════════════════
+
 CREATE FUNCTION contar_usuarios() 
 RETURNS INTEGER AS $$
     SELECT COUNT(*) FROM usuarios;
@@ -285,7 +249,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ✅ PROCEDURES (procedimentos do banco)
+-- ═══════════════════════════════════════════════════════════════
+-- PART 8: EXEMPLOS SQL - SLIDE 5 (PROCEDURES)
+-- ═══════════════════════════════════════════════════════════════
+
 CREATE PROCEDURE finalizar_campeonato(p_id_campeonato INTEGER) AS $$
 BEGIN
     UPDATE campeonatos 
@@ -310,10 +277,3 @@ BEGIN
     END IF;
 END;
 $$ LANGUAGE plpgsql;
-
--- ═══════════════════════════════════════════════════════════════
--- VERIFICAÇÃO FINAL
--- ═══════════════════════════════════════════════════════════════
-
--- Confirmar que tudo foi criado
-SELECT 'Banco de dados criado com sucesso!' as status;
