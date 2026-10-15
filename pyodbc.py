@@ -1,150 +1,358 @@
-import os
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+╔═══════════════════════════════════════════════════════════╗
+║  Os Camp dos Guri - ODBC Connection (CORRIGIDO)          ║
+║  Conecta ao PostgreSQL usando ODBC                        ║
+║  Operações: INSERT, SELECT, UPDATE, DELETE                ║
+╚═══════════════════════════════════════════════════════════╝
+"""
+
 import pyodbc
+import os
 
-conn = pyodbc.connect(
-    'DRIVER={SQL Server};'
-    'SERVER=CAMPGURI;'
-    'DATABASE=CAMPGURI;'
-    'UID=localhost;'
-    'PWD=12345678'
-)
-
-cursor = conn.cursor()
-usuarios = [
-    ("João Silva", "joao@example.com", "hash123", "criador")
-    ("João Silva", "joao@example.com", "hash123", "criador")
-    ("Admin System", "admin@example.com", "hash789", "admin")
-]
-cursor.executemany("INSERT INTO usuarios (nome, email, senha_hash, tipo_usuario) VALUES (?, ?, ?, ?)", usuarios)
-
-modalidades = [
-    ("Pokémon VGC", "Competição oficial Pokémon", "competitivo")
-    ("Pokémon Casual", "Diversão entre amigos", "casual")
-]
-cursor.executemany("INSERT INTO modalidades (nome, descricao, tipo_disputa) VALUES (?, ?, ?)", modalidades)
-
-campeonatos = [
-    (1, 1, "Campeonato VGC 2024", "duplas", "planejamento", 64, "individual")
-    (2, 2, "Torneio Casual Amigos", "individual", "em_progresso", 32, "individual")
-]
-cursor.executemany("INSERT INTO campeonatos (id_criador, id_modalidade, nome, formato, status, max_participantes, tipo_inscricao) VALUES (?, ?, ?, ?, ?, ?, ?)", campeonatos)
-
-participantes = [
-    ("Lucas Trainer", "LucasTrainer", "lucas@example.com")
-    ("Ana Master", "AnaMaster", "ana@example.com")
-    ("Carlos Expert", "CarlosExp", "carlos@example.com")
-]
-cursor.executemany("INSERT INTO participantes (nome, nickname, email) VALUES (?, ?, ?)", participantes)
-
-inscrições = [
-    (1, 1, "confirmada")
-    (1, 2, "confirmada")
-    (2, 3, "confirmada")
-]
-cursor.executemany("INSERT INTO inscricoes (id_campeonato, id_participante, status) VALUES (?, ?, ?)", inscrições)
-
-
-cursor.execute("SELECT * FROM usuarios")
-for row in cursor.fetchall():
-    print(row)   
-
-cursor.execute("SELECT id_usuario, nome, email FROM usuarios")
-for row in cursor.fetchall():
-    print(f"ID: {row.id_usuario}, Nome: {row.nome}, Email: {row.email}")
-
-cursor.execute("""
-    SELECT 
-        id_usuario AS [ID do Usuário],
-        nome AS [Nome Completo],
-        tipo_usuario AS [Tipo]
-    FROM usuarios
-""")
-for row in cursor.fetchall():
-    print(f"ID: {row[0]}, Nome: {row[1]}, Tipo: {row[2]}")
-
-cursor.execute("SELECT * FROM usuarios WHERE tipo_usuario = ?", ('criador',))
-for row in cursor.fetchall():
-    print(row)
-
-cursor.execute("""
-    SELECT * FROM campeonatos 
-    WHERE status = ? AND max_participantes > ?
-""", ('em_progresso', 30))
-for row in cursor.fetchall():
-    print(row)
-
-cursor.execute("SELECT * FROM participantes WHERE nome LIKE ?", ('L%',))
-for row in cursor.fetchall():
-    print(row)
-
-cursor.execute("SELECT nome, data_criacao FROM campeonatos ORDER BY nome ASC")
-for row in cursor.fetchall():
-    print(row)
-
-cursor.execute("""
-    SELECT * FROM campeonatos 
-    WHERE data_inicio BETWEEN ? AND ?
-""", ('2024-01-01', '2024-12-31'))
-for row in cursor.fetchall():
-    print(row)
+class CampGiriDB:
+    """Classe para gerenciar conexão ODBC com banco de dados PostgreSQL"""
     
-cursor.execute("""
-    UPDATE usuarios SET ativo = ? WHERE tipo_usuario = ?
-""", (True, 'participante'))
-conn.commit()
-print(f"{cursor.rowcount} linha(s) atualizada(s).")
+    def __init__(self, servidor='localhost', usuario='postgres', senha='sua_senha', banco='camp_dos_guri'):
+        """Inicializa conexão com PostgreSQL via ODBC"""
+        try:
+            self.conexao = pyodbc.connect(
+                f'Driver={{PostgreSQL Unicode}};'
+                f'Server={servidor};'
+                f'Database={banco};'
+                f'UID={usuario};'
+                f'PWD={senha};'
+            )
+            self.cursor = self.conexao.cursor()
+            print(f"✅ Conectado ao banco de dados: {banco}")
+        except Exception as e:
+            print(f"❌ Erro ao conectar: {e}")
+            self.conexao = None
+            self.cursor = None
+    
+    # ═══════════════════════════════════════════════════════════════
+    # INSERT - Inserir dados
+    # ═══════════════════════════════════════════════════════════════
+    
+    def inserir_usuario(self, nome, email, tipo_usuario):
+        """Insere novo usuário no banco"""
+        try:
+            comando = f"""
+                INSERT INTO usuarios (nome, email, tipo_usuario, ativo)
+                VALUES ('{nome}', '{email}', '{tipo_usuario}', TRUE)
+            """
+            self.cursor.execute(comando)
+            self.conexao.commit()
+            print(f"✅ Usuário '{nome}' inserido com sucesso!")
+        except Exception as e:
+            print(f"❌ Erro ao inserir usuário: {e}")
+    
+    def inserir_participante(self, nome, nickname, email):
+        """Insere novo participante"""
+        try:
+            comando = f"""
+                INSERT INTO participantes (nome, nickname, email)
+                VALUES ('{nome}', '{nickname}', '{email}')
+            """
+            self.cursor.execute(comando)
+            self.conexao.commit()
+            print(f"✅ Participante '{nickname}' inserido com sucesso!")
+        except Exception as e:
+            print(f"❌ Erro ao inserir participante: {e}")
+    
+    def criar_campeonato(self, nome, id_criador, id_modalidade, max_participantes):
+        """Cria novo campeonato"""
+        try:
+            comando = f"""
+                INSERT INTO campeonatos (nome, id_criador, id_modalidade, status, max_participantes, data_criacao)
+                VALUES ('{nome}', {id_criador}, {id_modalidade}, 'inscricoes', {max_participantes}, CURRENT_DATE)
+            """
+            self.cursor.execute(comando)
+            self.conexao.commit()
+            print(f"✅ Campeonato '{nome}' criado com sucesso!")
+        except Exception as e:
+            print(f"❌ Erro ao criar campeonato: {e}")
+    
+    # ═══════════════════════════════════════════════════════════════
+    # SELECT - Ler dados
+    # ═══════════════════════════════════════════════════════════════
+    
+    def listar_usuarios(self):
+        """Lista todos os usuários"""
+        try:
+            comando = "SELECT id_usuario, nome, email, tipo_usuario FROM usuarios ORDER BY nome"
+            self.cursor.execute(comando)
+            usuarios = self.cursor.fetchall()
+            
+            print("\n" + "="*60)
+            print("LISTA DE USUÁRIOS")
+            print("="*60)
+            for usuario in usuarios:
+                print(f"ID: {usuario[0]} | Nome: {usuario[1]} | Email: {usuario[2]} | Tipo: {usuario[3]}")
+            print("="*60 + "\n")
+        except Exception as e:
+            print(f"❌ Erro ao listar usuários: {e}")
+    
+    def listar_campeonatos(self):
+        """Lista todos os campeonatos com INNER JOIN"""
+        try:
+            comando = """
+                SELECT c.id_campeonato, c.nome, u.nome AS criador, m.nome AS modalidade, c.status, c.max_participantes
+                FROM campeonatos c
+                INNER JOIN usuarios u ON c.id_criador = u.id_usuario
+                INNER JOIN modalidades m ON c.id_modalidade = m.id_modalidade
+                ORDER BY c.nome
+            """
+            self.cursor.execute(comando)
+            campeonatos = self.cursor.fetchall()
+            
+            print("\n" + "="*80)
+            print("LISTA DE CAMPEONATOS (COM INNER JOIN)")
+            print("="*80)
+            for camp in campeonatos:
+                print(f"ID: {camp[0]} | {camp[1]} | Criador: {camp[2]} | Tipo: {camp[3]} | Status: {camp[4]} | Max: {camp[5]}")
+            print("="*80 + "\n")
+        except Exception as e:
+            print(f"❌ Erro ao listar campeonatos: {e}")
+    
+    def listar_participantes(self):
+        """Lista todos os participantes"""
+        try:
+            comando = "SELECT id_participante, nome, nickname, email FROM participantes ORDER BY nickname"
+            self.cursor.execute(comando)
+            participantes = self.cursor.fetchall()
+            
+            print("\n" + "="*70)
+            print("LISTA DE PARTICIPANTES")
+            print("="*70)
+            for part in participantes:
+                print(f"ID: {part[0]} | Nome: {part[1]} | Nickname: {part[2]} | Email: {part[3]}")
+            print("="*70 + "\n")
+        except Exception as e:
+            print(f"❌ Erro ao listar participantes: {e}")
+    
+    # ═══════════════════════════════════════════════════════════════
+    # UPDATE - Atualizar dados
+    # ═══════════════════════════════════════════════════════════════
+    
+    def atualizar_status_campeonato(self, id_campeonato, novo_status):
+        """Atualiza status do campeonato"""
+        try:
+            comando = f"UPDATE campeonatos SET status = '{novo_status}' WHERE id_campeonato = {id_campeonato}"
+            self.cursor.execute(comando)
+            self.conexao.commit()
+            print(f"✅ Status do campeonato {id_campeonato} atualizado para '{novo_status}'")
+        except Exception as e:
+            print(f"❌ Erro ao atualizar campeonato: {e}")
+    
+    def inscrever_participante(self, id_campeonato, id_participante, seed):
+        """Inscreve participante em campeonato"""
+        try:
+            comando = f"""
+                INSERT INTO inscricoes (id_campeonato, id_participante, seed, status, data_inscricao)
+                VALUES ({id_campeonato}, {id_participante}, {seed}, 'pendente', CURRENT_DATE)
+            """
+            self.cursor.execute(comando)
+            self.conexao.commit()
+            print(f"✅ Participante {id_participante} inscrito no campeonato {id_campeonato}")
+        except Exception as e:
+            print(f"❌ Erro ao inscrever participante: {e}")
+    
+    # ═══════════════════════════════════════════════════════════════
+    # DELETE - Deletar dados
+    # ═══════════════════════════════════════════════════════════════
+    
+    def deletar_usuario(self, id_usuario):
+        """Deleta um usuário"""
+        try:
+            comando = f"DELETE FROM usuarios WHERE id_usuario = {id_usuario}"
+            self.cursor.execute(comando)
+            self.conexao.commit()
+            print(f"✅ Usuário {id_usuario} deletado com sucesso")
+        except Exception as e:
+            print(f"❌ Erro ao deletar usuário: {e}")
+    
+    # ═══════════════════════════════════════════════════════════════
+    # AGGREGATES - COUNT, SUM, AVG, etc
+    # ═══════════════════════════════════════════════════════════════
+    
+    def contar_participantes_campeonato(self, id_campeonato):
+        """Conta participantes de um campeonato (COUNT)"""
+        try:
+            comando = f"SELECT COUNT(*) FROM inscricoes WHERE id_campeonato = {id_campeonato}"
+            self.cursor.execute(comando)
+            resultado = self.cursor.fetchone()
+            print(f"\n✅ Total de participantes no campeonato {id_campeonato}: {resultado[0]}")
+        except Exception as e:
+            print(f"❌ Erro ao contar participantes: {e}")
+    
+    def media_participantes(self):
+        """Calcula média de participantes por campeonato (AVG)"""
+        try:
+            comando = "SELECT AVG(max_participantes) as media FROM campeonatos"
+            self.cursor.execute(comando)
+            resultado = self.cursor.fetchone()
+            print(f"\n✅ Média de participantes por campeonato: {resultado[0]:.2f}")
+        except Exception as e:
+            print(f"❌ Erro ao calcular média: {e}")
+    
+    def total_vagas(self):
+        """Calcula total de vagas em todos os campeonatos (SUM)"""
+        try:
+            comando = "SELECT SUM(max_participantes) as total FROM campeonatos"
+            self.cursor.execute(comando)
+            resultado = self.cursor.fetchone()
+            print(f"\n✅ Total de vagas em todos campeonatos: {resultado[0]}")
+        except Exception as e:
+            print(f"❌ Erro ao calcular total: {e}")
+    
+    # ═══════════════════════════════════════════════════════════════
+    # QUERIES AVANÇADAS
+    # ═══════════════════════════════════════════════════════════════
+    
+    def campeonatos_por_status(self):
+        """Agrupa campeonatos por status (GROUP BY)"""
+        try:
+            comando = "SELECT status, COUNT(*) as total FROM campeonatos GROUP BY status"
+            self.cursor.execute(comando)
+            resultados = self.cursor.fetchall()
+            
+            print("\n" + "="*40)
+            print("CAMPEONATOS POR STATUS (GROUP BY)")
+            print("="*40)
+            for status, total in resultados:
+                print(f"{status}: {total} campeonato(s)")
+            print("="*40 + "\n")
+        except Exception as e:
+            print(f"❌ Erro ao agrupar por status: {e}")
+    
+    def listar_campeonatos_com_left_join(self):
+        """Lista campeonatos com LEFT JOIN"""
+        try:
+            comando = """
+                SELECT c.nome, COUNT(i.id_inscricao) as total_inscritos
+                FROM campeonatos c
+                LEFT JOIN inscricoes i ON c.id_campeonato = i.id_campeonato
+                GROUP BY c.id_campeonato, c.nome
+            """
+            self.cursor.execute(comando)
+            resultados = self.cursor.fetchall()
+            
+            print("\n" + "="*50)
+            print("CAMPEONATOS COM INSCRIÇÕES (LEFT JOIN)")
+            print("="*50)
+            for nome, total in resultados:
+                print(f"{nome}: {total} inscrições")
+            print("="*50 + "\n")
+        except Exception as e:
+            print(f"❌ Erro ao listar com LEFT JOIN: {e}")
+    
+    # ═══════════════════════════════════════════════════════════════
+    # CONTROLE DE CONEXÃO
+    # ═══════════════════════════════════════════════════════════════
+    
+    def fechar_conexao(self):
+        """Fecha a conexão com o banco"""
+        try:
+            if self.cursor:
+                self.cursor.close()
+            if self.conexao:
+                self.conexao.close()
+            print("✅ Conexão fechada com sucesso")
+        except Exception as e:
+            print(f"❌ Erro ao fechar conexão: {e}")
 
-cursor.execute("DELETE FROM usuarios WHERE id_usuario = ?", (999,))
-conn.commit()
-print(f"{cursor.rowcount} linha(s) deletada(s).")
 
-cursor.execute("DROP TABLE IF EXISTS tabela_temporaria")
-conn.commit()
+def main():
+    """Função principal - Exemplos de uso de TODOS os comandos"""
+    
+    print("╔═══════════════════════════════════════════════════════════╗")
+    print("║  Os Camp dos Guri - DEMONSTRAÇÃO COMPLETA                ║")
+    print("║  Com INSERT, SELECT, UPDATE, DELETE, COUNT, AVG, etc     ║")
+    print("╚═══════════════════════════════════════════════════════════╝\n")
+    
+    # Conectar ao banco de dados
+    db = CampGiriDB(servidor='localhost', usuario='postgres', senha='sua_senha', banco='camp_dos_guri')
+    
+    if db.conexao is None:
+        print("❌ Não foi possível conectar ao banco de dados!")
+        return
+    
+    # ═══════════════════════════════════════════════════════════════
+    # 1. SELECT - Listar dados existentes
+    # ═══════════════════════════════════════════════════════════════
+    
+    print("\n📋 1. LISTANDO DADOS EXISTENTES (SELECT)...")
+    db.listar_usuarios()
+    db.listar_campeonatos()
+    db.listar_participantes()
+    
+    # ═══════════════════════════════════════════════════════════════
+    # 2. INSERT - Inserir dados
+    # ═══════════════════════════════════════════════════════════════
+    
+    print("\n➕ 2. INSERINDO NOVOS DADOS (INSERT)...")
+    db.inserir_usuario('Novo Criador', 'novo@example.com', 'criador')
+    db.inserir_participante('João Champion', 'JoaoChamp', 'joaochamp@example.com')
+    db.criar_campeonato('Campeonato Teste', 1, 1, 32)
+    
+    # ═══════════════════════════════════════════════════════════════
+    # 3. UPDATE - Atualizar dados
+    # ═══════════════════════════════════════════════════════════════
+    
+    print("\n✏️ 3. ATUALIZANDO DADOS (UPDATE)...")
+    db.atualizar_status_campeonato(2, 'em_progresso')
+    db.inscrever_participante(1, 6, 10)
+    
+    # ═══════════════════════════════════════════════════════════════
+    # 4. AGGREGATES - COUNT, SUM, AVG
+    # ═══════════════════════════════════════════════════════════════
+    
+    print("\n📊 4. CALCULANDO AGREGAÇÕES (COUNT, SUM, AVG)...")
+    db.contar_participantes_campeonato(1)
+    db.total_vagas()
+    db.media_participantes()
+    
+    # ═══════════════════════════════════════════════════════════════
+    # 5. GROUP BY - Agrupar dados
+    # ═══════════════════════════════════════════════════════════════
+    
+    print("\n📈 5. AGRUPANDO DADOS (GROUP BY)...")
+    db.campeonatos_por_status()
+    
+    # ═══════════════════════════════════════════════════════════════
+    # 6. JOINS - Combinar tabelas
+    # ═══════════════════════════════════════════════════════════════
+    
+    print("\n🔗 6. COMBINANDO TABELAS (INNER JOIN, LEFT JOIN)...")
+    db.listar_campeonatos()
+    db.listar_campeonatos_com_left_join()
+    
+    # ═══════════════════════════════════════════════════════════════
+    # 7. DELETE - Deletar dados
+    # ═══════════════════════════════════════════════════════════════
+    
+    print("\n🗑️ 7. DELETANDO DADOS (DELETE)...")
+    print("   (Exemplo: deletar usuário com ID 999 - se não existir, é seguro)")
+    db.deletar_usuario(999)
+    
+    # ═══════════════════════════════════════════════════════════════
+    # Final: Listar dados após mudanças
+    # ═══════════════════════════════════════════════════════════════
+    
+    print("\n📋 8. LISTANDO DADOS APÓS MUDANÇAS (SELECT NOVAMENTE)...")
+    db.listar_usuarios()
+    db.listar_campeonatos()
+    
+    # Fechar conexão
+    print("\n🔴 9. FECHANDO CONEXÃO...")
+    db.fechar_conexao()
+    
+    print("\n✅ DEMONSTRAÇÃO COMPLETA!")
+    print("   Todos os comandos foram executados com sucesso!")
 
-cursor.execute("ALTER TABLE usuarios ADD COLUMN telefone VARCHAR(20)")
-conn.commit()
 
-cursor.execute("""
-    SELECT nome FROM usuarios 
-    UNION 
-    SELECT nome FROM participantes
-""")
-for row in cursor.fetchall():
-    print(row)
-
-cursor.execute("""
-    SELECT email FROM usuarios 
-    INTERSECT 
-    SELECT email FROM participantes
-""")
-for row in cursor.fetchall():
-    print(row)
-
-cursor.execute("""
-    SELECT nome FROM usuarios 
-    EXCEPT 
-    SELECT nome FROM participantes
-""")
-for row in cursor.fetchall():
-    print(row)
-
-cursor.execute("""
-    SELECT id_participante, COALESCE(email, 'sem email') AS email 
-    FROM participantes
-""")
-for row in cursor.fetchall():
-    print(row)
-
-cursor.execute("""
-    SELECT 
-        COUNT(*) AS total_campeonatos,
-        AVG(max_participantes) AS media_participantes,
-        MIN(max_participantes) AS minimo,
-        MAX(max_participantes) AS maximo
-    FROM campeonatos
-""")
-row = cursor.fetchone()
-print(row)
-
-conn.commit()
-conn.close()
+if __name__ == "__main__":
+    main()
