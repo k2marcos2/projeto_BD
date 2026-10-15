@@ -13,67 +13,99 @@ import pyodbc
 import os
 
 class CampGiriDB:
-    """Classe para gerenciar conexão ODBC com banco de dados PostgreSQL"""
-    
-    def __init__(self, servidor='localhost', usuario='postgres', senha='sua_senha', banco='camp_dos_guri'):
-        """Inicializa conexão com PostgreSQL via ODBC"""
+
+    def __init__(
+        self,
+        servidor='localhost',
+        usuario='postgres',
+        senha=None,
+        banco='camp_dos_guri'
+        ):
+        import getpass
+
+        if senha is None:
+            senha = getpass.getpass("Senha do PostgreSQL: ")
+
         try:
             self.conexao = pyodbc.connect(
-                f'Driver={{PostgreSQL Unicode}};'
-                f'Server={servidor};'
-                f'Database={banco};'
+                'DRIVER={PostgreSQL Unicode(x64)};'
+                f'SERVER={servidor};'
+                'PORT=5432;'
+                f'DATABASE={banco};'
                 f'UID={usuario};'
-                f'PWD={senha};'
+                f'PWD={senha};',
+                timeout=5
             )
+
             self.cursor = self.conexao.cursor()
-            print(f"✅ Conectado ao banco de dados: {banco}")
-        except Exception as e:
-            print(f"❌ Erro ao conectar: {e}")
+            print(f"✅ Conectado ao banco: {banco}")
+
+        except pyodbc.Error as erro:
+            print(f"❌ Erro ao conectar: {erro}")
             self.conexao = None
             self.cursor = None
+   
     
-    # ═══════════════════════════════════════════════════════════════
-    # INSERT - Inserir dados
-    # ═══════════════════════════════════════════════════════════════
-    
-    def inserir_usuario(self, nome, email, tipo_usuario):
-        """Insere novo usuário no banco"""
+    def criar_campeonato(
+    self,
+    nome,
+    id_criador,
+    id_modalidade,
+    max_participantes,
+    formato="eliminacao_simples"
+    ):
         try:
-            comando = f"""
-                INSERT INTO usuarios (nome, email, tipo_usuario, ativo)
-                VALUES ('{nome}', '{email}', '{tipo_usuario}', TRUE)
+            comando = """
+                INSERT INTO campeonatos
+                (
+                    nome,
+                    id_criador,
+                    id_modalidade,
+                    formato,
+                    status,
+                    max_participantes,
+                    data_criacao
+                )
+                VALUES (?, ?, ?, ?, 'rascunho', ?, CURRENT_TIMESTAMP)
+                RETURNING id_campeonato
             """
-            self.cursor.execute(comando)
+
+            self.cursor.execute(
+                comando,
+                nome,
+                id_criador,
+                id_modalidade,
+                formato,
+                max_participantes
+            )
+
+            id_novo = self.cursor.fetchone()[0]
             self.conexao.commit()
-            print(f"✅ Usuário '{nome}' inserido com sucesso!")
-        except Exception as e:
-            print(f"❌ Erro ao inserir usuário: {e}")
-    
+
+            print(f"✅ Campeonato criado! ID: {id_novo}")
+
+        except pyodbc.Error as erro:
+            self.conexao.rollback()
+            print(f"❌ Erro ao criar campeonato: {erro}")
+
     def inserir_participante(self, nome, nickname, email):
-        """Insere novo participante"""
         try:
-            comando = f"""
-                INSERT INTO participantes (nome, nickname, email)
-                VALUES ('{nome}', '{nickname}', '{email}')
+            comando = """
+                INSERT INTO participantes
+                (nome, nickname, email)
+                VALUES (?, ?, ?)
             """
-            self.cursor.execute(comando)
+
+            self.cursor.execute(
+                comando, nome, nickname, email
+            )
+
             self.conexao.commit()
-            print(f"✅ Participante '{nickname}' inserido com sucesso!")
-        except Exception as e:
-            print(f"❌ Erro ao inserir participante: {e}")
-    
-    def criar_campeonato(self, nome, id_criador, id_modalidade, max_participantes):
-        """Cria novo campeonato"""
-        try:
-            comando = f"""
-                INSERT INTO campeonatos (nome, id_criador, id_modalidade, status, max_participantes, data_criacao)
-                VALUES ('{nome}', {id_criador}, {id_modalidade}, 'inscricoes', {max_participantes}, CURRENT_DATE)
-            """
-            self.cursor.execute(comando)
-            self.conexao.commit()
-            print(f"✅ Campeonato '{nome}' criado com sucesso!")
-        except Exception as e:
-            print(f"❌ Erro ao criar campeonato: {e}")
+            print(f"✅ Participante {nickname} inserido!")
+
+        except pyodbc.Error as e:
+            self.conexao.rollback()
+            print(f"❌ Erro: {e}")
     
     # ═══════════════════════════════════════════════════════════════
     # SELECT - Ler dados
@@ -116,6 +148,31 @@ class CampGiriDB:
             print("="*80 + "\n")
         except Exception as e:
             print(f"❌ Erro ao listar campeonatos: {e}")
+
+    def inserir_usuario(self, nome, email, tipo_usuario):
+        try:
+            comando = """
+                INSERT INTO usuarios
+                (nome, email, tipo_usuario, ativo)
+                VALUES (?, ?, ?, TRUE)
+                ON CONFLICT (email) DO NOTHING
+            """
+
+            self.cursor.execute(
+                comando, nome, email, tipo_usuario
+            )
+
+            quantidade = self.cursor.rowcount
+            self.conexao.commit()
+
+            if quantidade > 0:
+                print("✅ Usuário inserido com sucesso!")
+            else:
+                print("⚠️ Usuário já cadastrado!")
+
+        except pyodbc.Error as erro:
+            self.conexao.rollback()
+            print(f"❌ Erro ao inserir usuário: {erro}")
     
     def listar_participantes(self):
         """Lista todos os participantes"""
@@ -150,9 +207,12 @@ class CampGiriDB:
     def inscrever_participante(self, id_campeonato, id_participante, seed):
         """Inscreve participante em campeonato"""
         try:
-            comando = f"""
-                INSERT INTO inscricoes (id_campeonato, id_participante, seed, status, data_inscricao)
-                VALUES ({id_campeonato}, {id_participante}, {seed}, 'pendente', CURRENT_DATE)
+            comando = """
+                INSERT INTO inscricoes
+                (id_campeonato, id_participante, seed, status)
+                VALUES (?, ?, ?, 'pendente')
+                ON CONFLICT (id_campeonato, id_participante)
+                DO NOTHING
             """
             self.cursor.execute(comando)
             self.conexao.commit()
@@ -265,6 +325,7 @@ class CampGiriDB:
             print(f"❌ Erro ao fechar conexão: {e}")
 
 
+
 def main():
     """Função principal - Exemplos de uso de TODOS os comandos"""
     
@@ -274,8 +335,12 @@ def main():
     print("╚═══════════════════════════════════════════════════════════╝\n")
     
     # Conectar ao banco de dados
-    db = CampGiriDB(servidor='localhost', usuario='postgres', senha='sua_senha', banco='camp_dos_guri')
-    
+    db = CampGiriDB(
+    servidor='localhost',
+    usuario='postgres',
+    banco='camp_dos_guri'
+    )
+
     if db.conexao is None:
         print("❌ Não foi possível conectar ao banco de dados!")
         return
@@ -356,3 +421,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
