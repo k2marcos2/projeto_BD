@@ -441,3 +441,36 @@ DROP TABLE teste_temporario;
 CALL finalizar_campeonato(3);
 
 SELECT * FROM log_alteracoes;
+SELECT
+    table_schema,
+    table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_type = 'BASE TABLE'
+ORDER BY table_name;
+
+
+
+SELECT id_modalidade, nome
+FROM modalidades
+ORDER BY id_modalidade;
+
+INSERT INTO campeonatos
+    (nome, id_criador, id_modalidade, status,
+     max_participantes, data_criacao)
+VALUES
+    ('Campeonato VGC 2024', 1, 4, 'em_progresso', 64, '2026-10-01'),
+    ('Torneio Casual', 2, 5, 'inscricoes', 32, '2026-10-05'),
+    ('Mini Torneio', 1, 6, 'finalizado', 16, '2026-09-20')
+RETURNING id_campeonato, nome, id_modalidade;
+
+
+
+SELECT id_usuario, nome
+FROM usuarios
+ORDER BY id_usuario;
+
+
+SELECT id_campeonato, nome
+FROM campeonatos
+ORDER BY id_campeonato;

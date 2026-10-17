@@ -377,9 +377,9 @@ def main():
     
     print("\n➕ 2. INSERINDO NOVOS DADOS (INSERT)...")
     db.inserir_usuario('Novo Criador', 'novo@example.com', 'criador')
-    db.inserir_participante('João Champion', 'JoaoChamp', 'joaochamp@example.com')
-    db.criar_campeonato('Campeonato Teste', 1, 1, 32)
-    
+    # db.inserir_participante('João Champion', 'JoaoChamp', 'joaochamp@example.com')
+    # db.criar_campeonato('Campeonato Teste', 1, 1, 32)
+
     # ═══════════════════════════════════════════════════════════════
     # 3. UPDATE - Atualizar dados
     # ═══════════════════════════════════════════════════════════════
