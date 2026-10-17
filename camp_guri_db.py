@@ -38,10 +38,10 @@ class CampGiriDB:
             )
 
             self.cursor = self.conexao.cursor()
-            print(f"✅ Conectado ao banco: {banco}")
+            print(f"Conectado ao banco: {banco}")
 
         except pyodbc.Error as erro:
-            print(f"❌ Erro ao conectar: {erro}")
+            print(f" Erro ao conectar: {erro}")
             self.conexao = None
             self.cursor = None
    
@@ -82,11 +82,11 @@ class CampGiriDB:
             id_novo = self.cursor.fetchone()[0]
             self.conexao.commit()
 
-            print(f"✅ Campeonato criado! ID: {id_novo}")
+            print(f" Campeonato criado! ID: {id_novo}")
 
         except pyodbc.Error as erro:
             self.conexao.rollback()
-            print(f"❌ Erro ao criar campeonato: {erro}")
+            print(f" Erro ao criar campeonato: {erro}")
 
     def inserir_participante(self, nome, nickname, email):
         try:
@@ -101,15 +101,13 @@ class CampGiriDB:
             )
 
             self.conexao.commit()
-            print(f"✅ Participante {nickname} inserido!")
+            print(f" Participante {nickname} inserido!")
 
         except pyodbc.Error as e:
             self.conexao.rollback()
-            print(f"❌ Erro: {e}")
+            print(f" Erro: {e}")
     
-    # ═══════════════════════════════════════════════════════════════
     # SELECT - Ler dados
-    # ═══════════════════════════════════════════════════════════════
     
     def listar_usuarios(self):
         """Lista todos os usuários"""
@@ -125,7 +123,7 @@ class CampGiriDB:
                 print(f"ID: {usuario[0]} | Nome: {usuario[1]} | Email: {usuario[2]} | Tipo: {usuario[3]}")
             print("="*60 + "\n")
         except Exception as e:
-            print(f"❌ Erro ao listar usuários: {e}")
+            print(f" Erro ao listar usuários: {e}")
     
     def listar_campeonatos(self):
         """Lista todos os campeonatos com INNER JOIN"""
@@ -147,7 +145,7 @@ class CampGiriDB:
                 print(f"ID: {camp[0]} | {camp[1]} | Criador: {camp[2]} | Tipo: {camp[3]} | Status: {camp[4]} | Max: {camp[5]}")
             print("="*80 + "\n")
         except Exception as e:
-            print(f"❌ Erro ao listar campeonatos: {e}")
+            print(f" Erro ao listar campeonatos: {e}")
 
     def inserir_usuario(self, nome, email, tipo_usuario):
         try:
@@ -166,13 +164,13 @@ class CampGiriDB:
             self.conexao.commit()
 
             if quantidade > 0:
-                print("✅ Usuário inserido com sucesso!")
+                print(" Usuário inserido com sucesso!")
             else:
-                print("⚠️ Usuário já cadastrado!")
+                print(" Usuário já cadastrado!")
 
         except pyodbc.Error as erro:
             self.conexao.rollback()
-            print(f"❌ Erro ao inserir usuário: {erro}")
+            print(f" Erro ao inserir usuário: {erro}")
     
     def listar_participantes(self):
         """Lista todos os participantes"""
@@ -188,11 +186,9 @@ class CampGiriDB:
                 print(f"ID: {part[0]} | Nome: {part[1]} | Nickname: {part[2]} | Email: {part[3]}")
             print("="*70 + "\n")
         except Exception as e:
-            print(f"❌ Erro ao listar participantes: {e}")
+            print(f" Erro ao listar participantes: {e}")
     
-    # ═══════════════════════════════════════════════════════════════
     # UPDATE - Atualizar dados
-    # ═══════════════════════════════════════════════════════════════
     
     def atualizar_status_campeonato(self, id_campeonato, novo_status):
         """Atualiza status do campeonato"""
@@ -200,9 +196,9 @@ class CampGiriDB:
             comando = f"UPDATE campeonatos SET status = '{novo_status}' WHERE id_campeonato = {id_campeonato}"
             self.cursor.execute(comando)
             self.conexao.commit()
-            print(f"✅ Status do campeonato {id_campeonato} atualizado para '{novo_status}'")
+            print(f" Status do campeonato {id_campeonato} atualizado para '{novo_status}'")
         except Exception as e:
-            print(f"❌ Erro ao atualizar campeonato: {e}")
+            print(f" Erro ao atualizar campeonato: {e}")
     
     
     def inscrever_participante(self, id_campeonato, id_participante, seed):
@@ -228,18 +224,16 @@ class CampGiriDB:
             self.conexao.commit()
 
             if quantidade > 0:
-                print("✅ Participante inscrito com sucesso!")
+                print(" Participante inscrito com sucesso!")
             else:
-                print("⚠️ Participante já está inscrito!")
+                print(" Participante já está inscrito!")
 
         except pyodbc.Error as erro:
             self.conexao.rollback()
-            print(f"❌ Erro ao inscrever participante: {erro}")
+            print(f" Erro ao inscrever participante: {erro}")
 
     
-    # ═══════════════════════════════════════════════════════════════
     # DELETE - Deletar dados
-    # ═══════════════════════════════════════════════════════════════
     
     def deletar_usuario(self, id_usuario):
         """Deleta um usuário"""
@@ -247,13 +241,12 @@ class CampGiriDB:
             comando = f"DELETE FROM usuarios WHERE id_usuario = {id_usuario}"
             self.cursor.execute(comando)
             self.conexao.commit()
-            print(f"✅ Usuário {id_usuario} deletado com sucesso")
+            print(f" Usuário {id_usuario} deletado com sucesso")
         except Exception as e:
-            print(f"❌ Erro ao deletar usuário: {e}")
+            print(f" Erro ao deletar usuário: {e}")
     
-    # ═══════════════════════════════════════════════════════════════
+
     # AGGREGATES - COUNT, SUM, AVG, etc
-    # ═══════════════════════════════════════════════════════════════
     
     def contar_participantes_campeonato(self, id_campeonato):
         """Conta participantes de um campeonato (COUNT)"""
@@ -261,9 +254,9 @@ class CampGiriDB:
             comando = f"SELECT COUNT(*) FROM inscricoes WHERE id_campeonato = {id_campeonato}"
             self.cursor.execute(comando)
             resultado = self.cursor.fetchone()
-            print(f"\n✅ Total de participantes no campeonato {id_campeonato}: {resultado[0]}")
+            print(f"\n Total de participantes no campeonato {id_campeonato}: {resultado[0]}")
         except Exception as e:
-            print(f"❌ Erro ao contar participantes: {e}")
+            print(f" Erro ao contar participantes: {e}")
     
     def media_participantes(self):
         """Calcula média de participantes por campeonato (AVG)"""
@@ -271,9 +264,9 @@ class CampGiriDB:
             comando = "SELECT AVG(max_participantes) as media FROM campeonatos"
             self.cursor.execute(comando)
             resultado = self.cursor.fetchone()
-            print(f"\n✅ Média de participantes por campeonato: {resultado[0]:.2f}")
+            print(f"\n Média de participantes por campeonato: {resultado[0]:.2f}")
         except Exception as e:
-            print(f"❌ Erro ao calcular média: {e}")
+            print(f" Erro ao calcular média: {e}")
     
     def total_vagas(self):
         """Calcula total de vagas em todos os campeonatos (SUM)"""
@@ -281,13 +274,12 @@ class CampGiriDB:
             comando = "SELECT SUM(max_participantes) as total FROM campeonatos"
             self.cursor.execute(comando)
             resultado = self.cursor.fetchone()
-            print(f"\n✅ Total de vagas em todos campeonatos: {resultado[0]}")
+            print(f"\n Total de vagas em todos campeonatos: {resultado[0]}")
         except Exception as e:
-            print(f"❌ Erro ao calcular total: {e}")
+            print(f" Erro ao calcular total: {e}")
     
-    # ═══════════════════════════════════════════════════════════════
+
     # QUERIES AVANÇADAS
-    # ═══════════════════════════════════════════════════════════════
     
     def campeonatos_por_status(self):
         """Agrupa campeonatos por status (GROUP BY)"""
@@ -303,7 +295,7 @@ class CampGiriDB:
                 print(f"{status}: {total} campeonato(s)")
             print("="*40 + "\n")
         except Exception as e:
-            print(f"❌ Erro ao agrupar por status: {e}")
+            print(f" Erro ao agrupar por status: {e}")
     
     def listar_campeonatos_com_left_join(self):
         """Lista campeonatos com LEFT JOIN"""
@@ -324,11 +316,9 @@ class CampGiriDB:
                 print(f"{nome}: {total} inscrições")
             print("="*50 + "\n")
         except Exception as e:
-            print(f"❌ Erro ao listar com LEFT JOIN: {e}")
+            print(f" Erro ao listar com LEFT JOIN: {e}")
     
-    # ═══════════════════════════════════════════════════════════════
     # CONTROLE DE CONEXÃO
-    # ═══════════════════════════════════════════════════════════════
     
     def fechar_conexao(self):
         """Fecha a conexão com o banco"""
@@ -339,7 +329,7 @@ class CampGiriDB:
                 self.conexao.close()
             print("✅ Conexão fechada com sucesso")
         except Exception as e:
-            print(f"❌ Erro ao fechar conexão: {e}")
+            print(f" Erro ao fechar conexão: {e}")
 
 
 
@@ -359,80 +349,78 @@ def main():
     )
 
     if db.conexao is None:
-        print("❌ Não foi possível conectar ao banco de dados!")
+        print(" Não foi possível conectar ao banco de dados!")
         return
     
-    # ═══════════════════════════════════════════════════════════════
+
     # 1. SELECT - Listar dados existentes
-    # ═══════════════════════════════════════════════════════════════
+
     
-    print("\n📋 1. LISTANDO DADOS EXISTENTES (SELECT)...")
+    print("\n 1. LISTANDO DADOS EXISTENTES (SELECT)...")
     db.listar_usuarios()
     db.listar_campeonatos()
     db.listar_participantes()
     
-    # ═══════════════════════════════════════════════════════════════
+
     # 2. INSERT - Inserir dados
-    # ═══════════════════════════════════════════════════════════════
+
     
-    print("\n➕ 2. INSERINDO NOVOS DADOS (INSERT)...")
+    print("\n 2. INSERINDO NOVOS DADOS (INSERT)...")
     db.inserir_usuario('Novo Criador', 'novo@example.com', 'criador')
     # db.inserir_participante('João Champion', 'JoaoChamp', 'joaochamp@example.com')
     # db.criar_campeonato('Campeonato Teste', 1, 1, 32)
 
-    # ═══════════════════════════════════════════════════════════════
     # 3. UPDATE - Atualizar dados
-    # ═══════════════════════════════════════════════════════════════
+
     
-    print("\n✏️ 3. ATUALIZANDO DADOS (UPDATE)...")
+    print("\n 3. ATUALIZANDO DADOS (UPDATE)...")
     db.atualizar_status_campeonato(2, 'em_progresso')
     db.inscrever_participante(1, 6, 10)
     
-    # ═══════════════════════════════════════════════════════════════
+
     # 4. AGGREGATES - COUNT, SUM, AVG
-    # ═══════════════════════════════════════════════════════════════
+
     
-    print("\n📊 4. CALCULANDO AGREGAÇÕES (COUNT, SUM, AVG)...")
+    print("\n 4. CALCULANDO AGREGAÇÕES (COUNT, SUM, AVG)...")
     db.contar_participantes_campeonato(1)
     db.total_vagas()
     db.media_participantes()
     
-    # ═══════════════════════════════════════════════════════════════
+
     # 5. GROUP BY - Agrupar dados
-    # ═══════════════════════════════════════════════════════════════
+
     
-    print("\n📈 5. AGRUPANDO DADOS (GROUP BY)...")
+    print("\n 5. AGRUPANDO DADOS (GROUP BY)...")
     db.campeonatos_por_status()
     
-    # ═══════════════════════════════════════════════════════════════
+
     # 6. JOINS - Combinar tabelas
-    # ═══════════════════════════════════════════════════════════════
     
-    print("\n🔗 6. COMBINANDO TABELAS (INNER JOIN, LEFT JOIN)...")
+    print("\n 6. COMBINANDO TABELAS (INNER JOIN, LEFT JOIN)...")
     db.listar_campeonatos()
     db.listar_campeonatos_com_left_join()
     
-    # ═══════════════════════════════════════════════════════════════
+
     # 7. DELETE - Deletar dados
-    # ═══════════════════════════════════════════════════════════════
+
     
-    print("\n🗑️ 7. DELETANDO DADOS (DELETE)...")
+    print("\n 7. DELETANDO DADOS (DELETE)...")
     print("   (Exemplo: deletar usuário com ID 999 - se não existir, é seguro)")
     db.deletar_usuario(999)
     
-    # ═══════════════════════════════════════════════════════════════
+
     # Final: Listar dados após mudanças
-    # ═══════════════════════════════════════════════════════════════
+
     
-    print("\n📋 8. LISTANDO DADOS APÓS MUDANÇAS (SELECT NOVAMENTE)...")
+    print("\n 8. LISTANDO DADOS APÓS MUDANÇAS (SELECT NOVAMENTE)...")
     db.listar_usuarios()
     db.listar_campeonatos()
     
     # Fechar conexão
-    print("\n🔴 9. FECHANDO CONEXÃO...")
+    print("\n 9. FECHANDO CONEXÃO...")
     db.fechar_conexao()
     
-    print("\n✅ DEMONSTRAÇÃO COMPLETA!")
+    print("\n DEMONSTRAÇÃO COMPLETA!")
     print("   Todos os comandos foram executados com sucesso!")
 
 
